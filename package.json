@@ -1,6 +1,6 @@
 {
   "name": "@bloom-us/hello",
-  "description": "Type-safe debug logger with first-class TypeScript support",
+  "description": "A type-safe utility for creating structured debug patterns across multiple namespaces and environments in TypeScript applications",
   "version": "0.1.0",
   "type": "module",
   "publishConfig": {
