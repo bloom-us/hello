@@ -1,0 +1,44 @@
+{
+  "name": "@bloom-us/hello",
+  "description": "Type-safe debug logger with first-class TypeScript support",
+  "version": "0.1.0",
+  "type": "module",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bloom-us/hello.git"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/chai": "^5.0.1",
+    "@types/debug": "^4.1.12",
+    "@types/mocha": "^10.0.10",
+    "chai": "^5.1.2",
+    "mocha": "^11.1.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "debug": "^4.4.0"
+  },
+  "peerDependenciesMeta": {
+    "dotenv": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "rm -rf ./dist && bun build ./src/index.ts --outdir ./dist --target=node --external debug && tsc",
+    "test": "NODE_ENV=test bun test ./test/*.spec.ts",
+    "package": "bun run test && bun run build && dotenv run npm publish"
+  }
+}
