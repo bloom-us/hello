@@ -1,7 +1,7 @@
 {
   "name": "@bloom-us/hello",
   "description": "A type-safe utility for creating structured debug patterns across multiple namespaces and environments in TypeScript applications",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
