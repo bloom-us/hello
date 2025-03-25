@@ -39,6 +39,7 @@
     }
   },
   "scripts": {
+    "build": "rm -rf ./dist && bun build ./src/index.ts --outdir ./dist --target=node --external debug && tsc",
     "test": "NODE_ENV=test bun test ./test/*.spec.ts"
   }
 }
