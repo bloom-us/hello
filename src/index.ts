@@ -1,4 +1,4 @@
-import debug, { type Debugger } from "debug";
+import debugFactory from "debug";
 
 // Type to generate patterns for one environment across all namespaces
 type JoinNamespacesWithEnv<
@@ -28,7 +28,9 @@ type JoinAllEnvironments<
     : never
   : "";
 
-type DebugMap<E extends readonly string[]> = { [K in E[number]]: Debugger };
+type DebugMap<E extends readonly string[]> = {
+  [K in E[number]]: debugFactory.Debugger;
+};
 
 // Type for multi-namespace logger
 export type Hello<N extends readonly string[], E extends readonly string[]> = {
@@ -45,21 +47,31 @@ export function createDebugPatterns<
     .join(",") as JoinAllEnvironments<N, E>;
 }
 
+// Export the debug factory for testing purposes
+export const createDebugger = (namespace: string): debugFactory.Debugger => {
+  return debugFactory(namespace);
+};
+
 export const helloInnit = <
   N extends readonly string[],
   E extends readonly string[]
 >(
   namespaces: N,
-  environments: E
+  environments: E,
+  // Allow injection of a custom debug creator for testing
+  debugCreator: (namespace: string) => debugFactory.Debugger = createDebugger
 ): Hello<N, E> => {
   // Create a cache to store instantiated debuggers
-  const debuggerCache = new Map<string, Debugger>();
+  const debuggerCache = new Map<string, debugFactory.Debugger>();
 
   // Function to create or retrieve cached debug instance
-  const getDebugger = (namespace: string, env: string): Debugger => {
+  const getDebugger = (
+    namespace: string,
+    env: string
+  ): debugFactory.Debugger => {
     const key = `${namespace}:${env}`;
     if (!debuggerCache.has(key)) {
-      debuggerCache.set(key, debug(key));
+      debuggerCache.set(key, debugCreator(key));
     }
     return debuggerCache.get(key)!;
   };
@@ -94,7 +106,7 @@ export const helloInnit = <
 
       // Create a proxy function that forwards calls to the actual debug instance
       const debugProxy = new Proxy(
-        function (this: unknown, ...args: Parameters<Debugger>) {
+        function (this: unknown, ...args: Parameters<debugFactory.Debugger>) {
           return getDebugger(namespace, env)(...args);
         },
         {
@@ -103,14 +115,16 @@ export const helloInnit = <
               // Special case to prevent proxy from being treated as a Promise
               return undefined;
             }
-            return getDebugger(namespace, env)[prop as keyof Debugger];
+            return getDebugger(namespace, env)[
+              prop as keyof debugFactory.Debugger
+            ];
           },
           set(target, prop: string | symbol, value: unknown) {
             (getDebugger(namespace, env) as any)[prop] = value;
             return true;
           },
         }
-      ) as unknown as Debugger;
+      ) as unknown as debugFactory.Debugger;
 
       Object.defineProperties(debugProxy, propertyHandlers);
       envMap[env as E[number]] = debugProxy;

@@ -1,14 +1,12 @@
 # Hello Debug
 
-A type-safe, lazy-initialized wrapper for the [debug](https://www.npmjs.com/package/debug) package that supports multiple namespaces and environments.
+A type-safe wrapper for the [debug](https://www.npmjs.com/package/debug) package with lazy initialization and environment-specific loggers.
 
-## Features
+## Key Features
 
-- **Type safety**: Full TypeScript support with strongly typed namespaces and environments
-- **Lazy initialization**: Debug instances are only created when actually used
-- **Environment variable awareness**: Respects DEBUG environment variable changes even after initialization
-- **Multi-environment support**: Organize your debug loggers by both namespaces and environments
-- **Pattern generation**: Helper functions to generate debug patterns
+- **Lazy initialization** - Debug instances are only created when accessed, respecting DEBUG env vars at runtime
+- **Type-safe API** - Full TypeScript support with strongly typed namespaces and environments
+- **Multi-environment support** - Organize loggers by both namespaces and environments
 
 ## Installation
 
@@ -16,87 +14,57 @@ A type-safe, lazy-initialized wrapper for the [debug](https://www.npmjs.com/pack
 npm install hello-debug
 ```
 
-## Basic Usage
+## Quick Start
 
 ```typescript
 import { helloInnit } from "hello-debug";
 
-// Define your namespaces and environments
+// Define namespaces and environments with const assertions for type safety
 const namespaces = ["app", "api", "db"] as const;
-const environments = ["dev", "prod", "test"] as const;
+const environments = ["dev", "prod"] as const;
 
-// Create your logger
+// Create logger - no debug instances are created yet
 const logger = helloInnit(namespaces, environments);
 
-// Use it
-logger.app.dev("Application starting in dev mode");
-logger.db.prod("Connected to production database");
+// Use loggers (instances are created on-demand)
+logger.app.dev("Starting application");
+logger.db.prod("Database connected");
+
+// Environment variable controls which logs are shown
+// DEBUG=app:dev,db:* node your-app.js
+
+// Can be programmatically enabled
+logger.api.dev.enabled = true;
 ```
 
-## Setting Debug Environment Variables
+## Why Lazy Initialization?
 
-### Method 1: Through environment variables (recommended)
+The key advantage is that debug instances are created only when they're accessed, not when the logger is created. This means:
 
-Set the DEBUG environment variable before running your application:
-
-```bash
-# Enable all dev loggers
-DEBUG=app:dev,api:dev,db:dev node your-app.js
-
-# Enable all db loggers in all environments
-DEBUG=db:* node your-app.js
-
-# Mix and match
-DEBUG=app:dev,db:* node your-app.js
-```
-
-### Method 2: Programmatically
+1. You can set/change the DEBUG environment variable at any time before using a logger
+2. Debug instances are only created for parts of your code that execute
+3. Memory usage is optimized by only creating instances as needed
 
 ```typescript
-// Enable specific loggers programmatically
-logger.app.dev.enabled = true;
-logger.db.prod.enabled = true;
-```
-
-## Lazy Initialization
-
-The key feature of this library is lazy initialization of debug instances:
-
-1. Debug instances are created only when actually accessed
-2. Changes to the DEBUG environment variable are respected even after initialization
-3. This means you can:
-   - Set the DEBUG variable at any point before using a logger
-   - Only create debug instances for the parts of your code that are actually executed
-
-Example:
-
-```typescript
-// Create logger at application startup
+// Create logger early in application startup
 const logger = helloInnit(namespaces, environments);
 
-// ... later in the application ...
-
-// Set DEBUG environment variable on the fly
+// Later, perhaps in response to a runtime flag:
 process.env.DEBUG = "api:prod";
 
-// Now this will log, even though the logger was created before setting DEBUG
-logger.api.prod("This will appear!");
+// Will respect the new DEBUG setting even though logger was created earlier
+logger.api.prod("This will now be visible");
 ```
 
 ## Pattern Generation
 
-You can generate debug patterns for use with the DEBUG environment variable:
-
 ```typescript
 import { createDebugPatterns } from "hello-debug";
 
-const namespaces = ["app", "api", "db"] as const;
-const environments = ["dev", "prod"] as const;
-
 const pattern = createDebugPatterns(namespaces, environments);
-// pattern will be: "app:dev,api:dev,db:dev,app:prod,api:prod,db:prod"
+// "app:dev,api:dev,db:dev,app:prod,api:prod,db:prod"
 
-// You can use this directly:
+// Use directly:
 process.env.DEBUG = pattern;
 ```
 

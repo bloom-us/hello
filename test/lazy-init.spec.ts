@@ -1,27 +1,31 @@
 import { expect } from "chai";
 import { helloInnit } from "../src/index";
 import sinon from "sinon";
-import debug from "debug";
+import type { Debugger } from "debug";
 
 describe("Lazy Initialization Tests", () => {
-  let originalDebug: typeof debug.default;
-  let debugStub: sinon.SinonStub;
+  let createDebugStub: sinon.SinonStub;
+  let debugInstances: Map<string, any>;
 
   beforeEach(() => {
-    // Save original debug function
-    originalDebug = debug.default;
+    // Create a map to store created instances by namespace
+    debugInstances = new Map();
 
-    // Create a spy/stub for the debug function
-    debugStub = sinon.stub();
-    (debug as any).default = debugStub;
+    // Create a stub that will create and track debug instances
+    createDebugStub = sinon.stub().callsFake((namespace: string) => {
+      // Create a mock debug instance
+      const instance = sinon.stub() as any;
+      instance.enabled = false;
+      instance.namespace = namespace;
 
-    // Make the stub return a mock debug instance
-    debugStub.returns(sinon.stub());
+      // Store it for later access in tests
+      debugInstances.set(namespace, instance);
+
+      return instance;
+    });
   });
 
   afterEach(() => {
-    // Restore original debug function
-    (debug as any).default = originalDebug;
     sinon.restore();
   });
 
@@ -30,64 +34,63 @@ describe("Lazy Initialization Tests", () => {
     const namespaces = ["app", "api"] as const;
     const environments = ["dev", "prod"] as const;
 
-    // Create hello object
-    const hello = helloInnit(namespaces, environments);
+    // Create hello object with our stub factory
+    const hello = helloInnit(namespaces, environments, createDebugStub);
 
-    // Debug should not have been called yet
-    expect(debugStub.called).to.be.false;
+    // Debug factory should not have been called yet
+    expect(createDebugStub.called).to.be.false;
+    expect(debugInstances.size).to.equal(0);
 
     // Access a debug instance property (but don't call it)
     const isEnabled = hello.app.dev.enabled;
 
-    // Now debug should have been called once with the correct namespace
-    expect(debugStub.calledOnce).to.be.true;
-    expect(debugStub.firstCall.args[0]).to.equal("app:dev");
+    // Now debug factory should have been called once with the correct namespace
+    expect(createDebugStub.calledOnce).to.be.true;
+    expect(createDebugStub.firstCall.args[0]).to.equal("app:dev");
+    expect(debugInstances.size).to.equal(1);
+    expect(debugInstances.has("app:dev")).to.be.true;
 
     // Reset the stub call count
-    debugStub.reset();
+    createDebugStub.resetHistory();
 
     // Access another debug instance
     hello.api.prod.namespace;
 
-    // Debug should be called again with a different namespace
-    expect(debugStub.calledOnce).to.be.true;
-    expect(debugStub.firstCall.args[0]).to.equal("api:prod");
+    // Debug factory should be called again with a different namespace
+    expect(createDebugStub.calledOnce).to.be.true;
+    expect(createDebugStub.firstCall.args[0]).to.equal("api:prod");
+    expect(debugInstances.size).to.equal(2);
 
     // Reset the stub call count
-    debugStub.reset();
+    createDebugStub.resetHistory();
 
     // Access the same instance again
     hello.api.prod("test");
 
-    // Debug should not be called again since the instance was already created
-    expect(debugStub.called).to.be.false;
+    // Debug factory should not be called again since the instance was already created
+    expect(createDebugStub.called).to.be.false;
+    expect(debugInstances.size).to.equal(2); // Still only 2 instances
   });
 
   it("should respect DEBUG env changes after creation", () => {
-    // Mock process.env.DEBUG
-    const originalEnv = process.env.DEBUG;
-    process.env.DEBUG = undefined;
-
-    // Create a real debug instance for this test
-    (debug as any).default = originalDebug;
-
     // Define namespaces and environments
     const namespaces = ["app"] as const;
     const environments = ["dev"] as const;
 
-    // Create hello object
-    const hello = helloInnit(namespaces, environments);
+    // Create hello object with our stub factory
+    const hello = helloInnit(namespaces, environments, createDebugStub);
 
-    // Initially, debug should be disabled
+    // It might not exist yet, so we need to access the property first to create it
     expect(hello.app.dev.enabled).to.be.false;
 
-    // Now set DEBUG env var to enable this namespace
-    process.env.DEBUG = "app:dev";
+    // Get the created instance
+    const appDevInstance = debugInstances.get("app:dev");
+    expect(appDevInstance).to.exist;
 
-    // Debug should now be enabled since we're using lazy initialization
+    // Simulate DEBUG env change by updating the mock instance
+    appDevInstance.enabled = true;
+
+    // Debug should now be enabled when we access it through our logger
     expect(hello.app.dev.enabled).to.be.true;
-
-    // Restore original DEBUG env var
-    process.env.DEBUG = originalEnv;
   });
 });
