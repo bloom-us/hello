@@ -9,6 +9,8 @@ A type-safe, structured logger built on [Pino](https://github.com/pinojs/pino) w
 - **Type-safe API** - Full TypeScript support with strongly typed namespaces and levels
 - **High performance** - Built on Pino for excellent performance
 - **Structured logging** - JSON output for production, pretty output for development
+- **Runtime compatibility** - Works with Node.js and Bun
+- **Configurable formatting** - Choose between pretty-printed or JSON logs
 
 ## Installation
 
@@ -68,6 +70,18 @@ LOG_LEVEL=debug node your-app.js
 ```
 
 ## Advanced Usage
+
+### Log Formatting
+
+By default, Hello uses pretty-printed logs in development and JSON logs in production. You can override this with the `prettyPrint` option:
+
+```typescript
+// Force JSON logs even in development
+const jsonLogger = helloInnit(namespaces, levels, { prettyPrint: false });
+
+// Force pretty-printed logs even in production
+const prettyLogger = helloInnit(namespaces, levels, { prettyPrint: true });
+```
 
 ### Custom Pino Options
 

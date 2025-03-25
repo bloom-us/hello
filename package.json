@@ -40,7 +40,7 @@
     }
   },
   "scripts": {
-    "build": "rm -rf ./dist && bun build ./src/index.ts --outdir ./dist --target=node --external pino,pino-pretty && tsc",
+    "build": "rm -rf ./dist && bun build ./src/index.ts --outdir ./dist --target=node --external pino --external pino-pretty --external thread-stream --external sonic-boom --external fast-redact --external real-require --external events && tsc",
     "test": "NODE_ENV=test bun test ./test/*.spec.ts"
   }
 }
