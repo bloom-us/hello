@@ -3,6 +3,7 @@ src/
 
 # Tests
 test/
+examples/
 
 # Config files
 tsconfig.json

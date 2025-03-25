@@ -1,7 +1,7 @@
 {
   "name": "@bloom-us/hello",
-  "description": "A type-safe utility for creating structured debug patterns across multiple namespaces and environments in TypeScript applications",
-  "version": "0.1.3",
+  "description": "A type-safe utility for creating structured logging across multiple namespaces and environments in TypeScript applications",
+  "version": "0.2.0",
   "type": "module",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
@@ -22,16 +22,17 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/chai": "^5.0.1",
-    "@types/debug": "^4.1.12",
     "@types/mocha": "^10.0.10",
+    "@types/pino": "^7.0.5",
+    "@types/sinon": "^10.0.15",
     "chai": "^5.1.2",
     "mocha": "^11.1.0",
-    "typescript": "^5.0.0",
-    "@types/sinon": "^10.0.15",
-    "sinon": "^20.0.0"
+    "sinon": "^20.0.0",
+    "typescript": "^5.0.0"
   },
-  "peerDependencies": {
-    "debug": "^4.4.0"
+  "dependencies": {
+    "pino": "^8.15.0",
+    "pino-pretty": "^13.0.0"
   },
   "peerDependenciesMeta": {
     "dotenv": {
@@ -39,7 +40,7 @@
     }
   },
   "scripts": {
-    "build": "rm -rf ./dist && bun build ./src/index.ts --outdir ./dist --target=node --external debug && tsc",
+    "build": "rm -rf ./dist && bun build ./src/index.ts --outdir ./dist --target=node --external pino,pino-pretty && tsc",
     "test": "NODE_ENV=test bun test ./test/*.spec.ts"
   }
 }
