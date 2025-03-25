@@ -183,7 +183,10 @@ export const helloInnit = <
   namespaces: N,
   levels: E,
   // Custom options for pino
-  options: pino.LoggerOptions & { logger?: any } = {}
+  options: pino.LoggerOptions & {
+    logger?: any;
+    prettyPrint?: boolean;
+  } = {}
 ): Hello<N, E> => {
   // Parse DEBUG environment variable
   const enabledNamespacesMap = parseDebugEnvVar(namespaces, levels);
@@ -245,28 +248,37 @@ export const helloInnit = <
         return { level: label.toUpperCase() };
       },
     },
-    // In test environment, don't use transport to avoid issues
-    ...(process.env.NODE_ENV !== "test"
-      ? {
-          transport:
-            process.env.NODE_ENV !== "production"
-              ? {
-                  target: "pino-pretty",
-                  options: {
-                    colorize: true,
-                    translateTime: "SYS:standard",
-                    ignore: "pid,hostname",
-                    messageFormat: "{namespace} {environment} - {msg}",
-                  },
-                }
-              : undefined,
-        }
-      : {}),
-    ...options,
+  };
+
+  // Use pretty printing if requested (enabled by default in development)
+  const shouldUsePrettyPrint =
+    options.prettyPrint !== undefined
+      ? options.prettyPrint
+      : process.env.NODE_ENV !== "production";
+
+  // Transport config for non-test environments
+  if (process.env.NODE_ENV !== "test" && shouldUsePrettyPrint) {
+    // Use pino-pretty for nice output
+    defaultOptions.transport = {
+      target: "pino-pretty",
+      options: {
+        colorize: true,
+        translateTime: "SYS:standard",
+        ignore: "pid,hostname",
+        messageFormat: "{namespace} {environment} - {msg}",
+      },
+    };
+  }
+
+  // Apply user options (except our custom options)
+  const { prettyPrint, ...pinoOptions } = options;
+  const finalOptions = {
+    ...defaultOptions,
+    ...pinoOptions,
   };
 
   // Create base logger - using provided logger if available (for testing)
-  const baseLogger = options.logger || pino(defaultOptions);
+  const baseLogger = options.logger || pino(finalOptions);
 
   // Create result object
   const hello = {} as Hello<N, E>;
