@@ -1,71 +1,101 @@
-# Hello Debug
+# Hello
 
-A type-safe wrapper for the [debug](https://www.npmjs.com/package/debug) package with lazy initialization and environment-specific loggers.
+A type-safe, structured logger built on [Pino](https://github.com/pinojs/pino) with support for the familiar DEBUG environment variable format.
 
 ## Key Features
 
-- **Lazy initialization** - Debug instances are only created when accessed, respecting DEBUG env vars at runtime
-- **Type-safe API** - Full TypeScript support with strongly typed namespaces and environments
-- **Multi-environment support** - Organize loggers by both namespaces and environments
+- **Namespace-based logging** - Organize logs by component or feature
+- **DEBUG env var support** - Use the same patterns as the debug package (`DEBUG=app:*,db:error`)
+- **Type-safe API** - Full TypeScript support with strongly typed namespaces and levels
+- **High performance** - Built on Pino for excellent performance
+- **Structured logging** - JSON output for production, pretty output for development
 
 ## Installation
 
 ```bash
-npm install hello-debug
+npm install @bloom-us/hello
 ```
 
 ## Quick Start
 
 ```typescript
-import { helloInnit } from "hello-debug";
+import { helloInnit } from "@bloom-us/hello";
 
-// Define namespaces and environments with const assertions for type safety
+// Define namespaces and levels with const assertions for type safety
 const namespaces = ["app", "api", "db"] as const;
-const environments = ["dev", "prod"] as const;
+const levels = ["info", "warn", "error", "debug"] as const;
 
-// Create logger - no debug instances are created yet
-const logger = helloInnit(namespaces, environments);
+// Create logger
+const hello = helloInnit(namespaces, levels);
 
-// Use loggers (instances are created on-demand)
-logger.app.dev("Starting application");
-logger.db.prod("Database connected");
+// Use loggers
+hello.app.info("Application starting");
+hello.db.error("Database connection failed", { retryCount: 3 });
 
-// Environment variable controls which logs are shown
-// DEBUG=app:dev,db:* node your-app.js
-
-// Can be programmatically enabled
-logger.api.dev.enabled = true;
+// Mix string and object logging
+hello.api.info({ userId: 123, method: "GET" }, "User request received");
 ```
 
-## Why Lazy Initialization?
+## Controlling Log Output
 
-The key advantage is that debug instances are created only when they're accessed, not when the logger is created. This means:
+Hello offers two ways to control which logs are shown:
 
-1. You can set/change the DEBUG environment variable at any time before using a logger
-2. Debug instances are only created for parts of your code that execute
-3. Memory usage is optimized by only creating instances as needed
+### 1. DEBUG Environment Variable
 
-```typescript
-// Create logger early in application startup
-const logger = helloInnit(namespaces, environments);
+Same format as the debug package, but extended for levels:
 
-// Later, perhaps in response to a runtime flag:
-process.env.DEBUG = "api:prod";
+```bash
+# Enable all logs from the app namespace
+DEBUG=app:* node your-app.js
 
-// Will respect the new DEBUG setting even though logger was created earlier
-logger.api.prod("This will now be visible");
+# Enable specific namespace:level combinations
+DEBUG=app:info,db:error node your-app.js
+
+# Enable everything except db namespace
+DEBUG=*,-db node your-app.js
 ```
 
-## Pattern Generation
+### 2. LOG_LEVEL Environment Variable
+
+Standard Pino log level filtering:
+
+```bash
+# Only show error logs and above
+LOG_LEVEL=error node your-app.js
+
+# Show all logs including debug
+LOG_LEVEL=debug node your-app.js
+```
+
+## Advanced Usage
+
+### Custom Pino Options
 
 ```typescript
-import { createDebugPatterns } from "hello-debug";
+import { helloInnit } from "@bloom-us/hello";
 
-const pattern = createDebugPatterns(namespaces, environments);
-// "app:dev,api:dev,db:dev,app:prod,api:prod,db:prod"
+// Pass any Pino options as the third argument
+const hello = helloInnit(["app", "api"] as const, ["info", "error"] as const, {
+  // Any Pino options here
+  timestamp: pino.stdTimeFunctions.isoTime,
+  redact: ["password", "cookie"],
+  // Custom transport for production
+  transport:
+    process.env.NODE_ENV === "production"
+      ? { target: "pino/file", options: { destination: "/var/log/app.log" } }
+      : undefined,
+});
+```
 
-// Use directly:
-process.env.DEBUG = pattern;
+### Access to Pino
+
+The package exports Pino so you can use it directly:
+
+```typescript
+import { pino, helloInnit } from "@bloom-us/hello";
+
+// Use Pino directly if needed
+const customLogger = pino({ level: "trace" });
 ```
 
 ## License
