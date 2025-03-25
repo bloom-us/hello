@@ -52,18 +52,72 @@ export const helloInnit = <
   namespaces: N,
   environments: E
 ): Hello<N, E> => {
-  const hello = namespaces.reduce((acc, namespace) => {
-    return {
-      ...acc,
-      [namespace]: environments.reduce((acc, env) => {
-        // For each environment, create a debug instance with the correct namespace:environment pattern
-        return {
-          ...acc,
-          [env]: debug(`${namespace}:${env}`),
-        };
-      }, {} as DebugMap<E>),
-    };
-  }, {} as Hello<N, E>);
+  // Create a cache to store instantiated debuggers
+  const debuggerCache = new Map<string, Debugger>();
+
+  // Function to create or retrieve cached debug instance
+  const getDebugger = (namespace: string, env: string): Debugger => {
+    const key = `${namespace}:${env}`;
+    if (!debuggerCache.has(key)) {
+      debuggerCache.set(key, debug(key));
+    }
+    return debuggerCache.get(key)!;
+  };
+
+  // Create proxy structures for lazy initialization
+  const hello = {} as Hello<N, E>;
+
+  // Build the namespace level
+  for (const namespace of namespaces) {
+    const envMap = {} as DebugMap<E>;
+
+    // Build the environment level with proxies
+    for (const env of environments) {
+      // Define getters/setters for common properties that should be forwarded
+      const propertyHandlers: PropertyDescriptorMap = {
+        enabled: {
+          get() {
+            return getDebugger(namespace, env).enabled;
+          },
+          set(value: boolean) {
+            getDebugger(namespace, env).enabled = value;
+          },
+          configurable: true,
+        },
+        namespace: {
+          get() {
+            return getDebugger(namespace, env).namespace;
+          },
+          configurable: true,
+        },
+      };
+
+      // Create a proxy function that forwards calls to the actual debug instance
+      const debugProxy = new Proxy(
+        function (this: unknown, ...args: Parameters<Debugger>) {
+          return getDebugger(namespace, env)(...args);
+        },
+        {
+          get(target, prop: string | symbol) {
+            if (prop === "then") {
+              // Special case to prevent proxy from being treated as a Promise
+              return undefined;
+            }
+            return getDebugger(namespace, env)[prop as keyof Debugger];
+          },
+          set(target, prop: string | symbol, value: unknown) {
+            (getDebugger(namespace, env) as any)[prop] = value;
+            return true;
+          },
+        }
+      ) as unknown as Debugger;
+
+      Object.defineProperties(debugProxy, propertyHandlers);
+      envMap[env as E[number]] = debugProxy;
+    }
+
+    hello[namespace as N[number]] = envMap;
+  }
 
   return hello;
 };

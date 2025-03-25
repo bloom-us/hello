@@ -1,119 +1,103 @@
-# TypeScript Debug Pattern Generator
+# Hello Debug
 
-A strongly-typed utility for creating structured debug patterns across multiple namespaces and environments using the `debug` package.
+A type-safe, lazy-initialized wrapper for the [debug](https://www.npmjs.com/package/debug) package that supports multiple namespaces and environments.
 
 ## Features
 
-- Type-safe debug pattern generation
-- Support for multiple namespaces and environments
-- Structured logging with environment-specific debuggers
-- Full TypeScript support with preserved literal types
+- **Type safety**: Full TypeScript support with strongly typed namespaces and environments
+- **Lazy initialization**: Debug instances are only created when actually used
+- **Environment variable awareness**: Respects DEBUG environment variable changes even after initialization
+- **Multi-environment support**: Organize your debug loggers by both namespaces and environments
+- **Pattern generation**: Helper functions to generate debug patterns
 
 ## Installation
 
 ```bash
-npm install @your-scope/ts-debug-pattern-generator
+npm install hello-debug
 ```
 
-Make sure you also have the `debug` package installed as a peer dependency:
-
-```bash
-npm install debug
-```
-
-## Usage
-
-### Basic Example
+## Basic Usage
 
 ```typescript
-import {
-  helloInnit,
-  createDebugPatterns,
-} from "@your-scope/ts-debug-pattern-generator";
+import { helloInnit } from "hello-debug";
 
 // Define your namespaces and environments
-const namespaces = ["api", "db", "auth"] as const;
-const environments = ["dev", "prod"] as const;
+const namespaces = ["app", "api", "db"] as const;
+const environments = ["dev", "prod", "test"] as const;
 
-// Create your debug patterns
-const patterns = createDebugPatterns(namespaces, environments);
-// Results in: "api:dev,db:dev,auth:dev,api:prod,db:prod,auth:prod"
+// Create your logger
+const logger = helloInnit(namespaces, environments);
 
-// Initialize your debuggers
-const hello = helloInnit(namespaces, environments);
-
-// Use your typed debuggers
-hello.api.dev("API Development log");
-hello.db.prod("Database Production log");
-hello.auth.dev("Auth Development log");
+// Use it
+logger.app.dev("Application starting in dev mode");
+logger.db.prod("Connected to production database");
 ```
 
-### Type Safety
+## Setting Debug Environment Variables
 
-The package provides full type safety and autocompletion:
+### Method 1: Through environment variables (recommended)
 
-```typescript
-// This works ✅
-hello.api.dev("Valid namespace and environment");
-
-// These will cause TypeScript errors ❌
-hello.invalid.dev("Invalid namespace");
-hello.api.invalid("Invalid environment");
-```
-
-## API Reference
-
-### `createDebugPatterns<N, E>`
-
-Creates a comma-separated string of debug patterns based on provided namespaces and environments.
-
-```typescript
-function createDebugPatterns<
-  N extends readonly string[],
-  E extends readonly string[]
->(namespaces: N, environments: E): string;
-```
-
-### `helloInnit<N, E>`
-
-Creates a structured object containing debug instances for each namespace-environment combination.
-
-```typescript
-function helloInnit<N extends readonly string[], E extends readonly string[]>(
-  namespaces: N,
-  environments: E
-): Hello<N, E>;
-```
-
-## Environment Variables
-
-Like the `debug` package, you can enable debugging by setting the `DEBUG` environment variable:
+Set the DEBUG environment variable before running your application:
 
 ```bash
-DEBUG="api:dev,db:dev" node your-app.js
+# Enable all dev loggers
+DEBUG=app:dev,api:dev,db:dev node your-app.js
+
+# Enable all db loggers in all environments
+DEBUG=db:* node your-app.js
+
+# Mix and match
+DEBUG=app:dev,db:* node your-app.js
 ```
 
-## Advanced Usage
-
-### Custom Pattern Generation
-
-You can use the `createDebugPatterns` function to generate patterns for specific use cases:
+### Method 2: Programmatically
 
 ```typescript
-const serviceNamespaces = ["users", "orders", "products"] as const;
-const serviceEnvs = ["local", "staging", "prod"] as const;
-
-const patterns = createDebugPatterns(serviceNamespaces, serviceEnvs);
-// Use these patterns in your debug configuration
+// Enable specific loggers programmatically
+logger.app.dev.enabled = true;
+logger.db.prod.enabled = true;
 ```
 
-### Type Definitions
+## Lazy Initialization
 
-The package includes several useful type definitions:
+The key feature of this library is lazy initialization of debug instances:
+
+1. Debug instances are created only when actually accessed
+2. Changes to the DEBUG environment variable are respected even after initialization
+3. This means you can:
+   - Set the DEBUG variable at any point before using a logger
+   - Only create debug instances for the parts of your code that are actually executed
+
+Example:
 
 ```typescript
-type Hello<N extends readonly string[], E extends readonly string[]>
-type DebugMap<E extends readonly string[]>
+// Create logger at application startup
+const logger = helloInnit(namespaces, environments);
+
+// ... later in the application ...
+
+// Set DEBUG environment variable on the fly
+process.env.DEBUG = "api:prod";
+
+// Now this will log, even though the logger was created before setting DEBUG
+logger.api.prod("This will appear!");
+```
+
+## Pattern Generation
+
+You can generate debug patterns for use with the DEBUG environment variable:
+
+```typescript
+import { createDebugPatterns } from "hello-debug";
+
+const namespaces = ["app", "api", "db"] as const;
+const environments = ["dev", "prod"] as const;
+
+const pattern = createDebugPatterns(namespaces, environments);
+// pattern will be: "app:dev,api:dev,db:dev,app:prod,api:prod,db:prod"
+
+// You can use this directly:
+process.env.DEBUG = pattern;
 ```
 
 ## License
